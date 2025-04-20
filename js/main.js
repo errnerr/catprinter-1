@@ -196,6 +196,9 @@ function setupImageModeListeners() {
     // Image upload
     imageUploadInput.addEventListener('change', handleImageUpload);
     
+    // Drag and Drop functionality
+    setupDragAndDrop();
+    
     // Dither method change
     ditherMethodSelect.addEventListener('change', () => {
         imageProcessor.updateSettings({ ditherMethod: ditherMethodSelect.value });
@@ -249,6 +252,80 @@ function setupImageModeListeners() {
     printImageBtn.addEventListener('click', printProcessedImage);
 }
 
+// === Drag and Drop Functionality ===
+function setupDragAndDrop() {
+    const dropZone = document.getElementById('dropZone');
+    const dropMessage = document.getElementById('dropMessage');
+    
+    // Prevent the default behavior for these events to enable dropping
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    // Handle enter and over events
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, highlight, false);
+    });
+    
+    // Handle leave and drop events
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, unhighlight, false);
+    });
+    
+    // Add and remove highlight class
+    function highlight() {
+        dropZone.classList.add('drag-over');
+    }
+    
+    function unhighlight() {
+        dropZone.classList.remove('drag-over');
+    }
+    
+    // Handle the drop event
+    dropZone.addEventListener('drop', handleDrop, false);
+    
+    async function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        
+        if (files && files.length > 0) {
+            const file = files[0];
+            
+            // Check if the file is an image
+            if (!file.type.match('image.*')) {
+                logger.warn('File is not an image');
+                imagePreviewMessage.textContent = 'Error: Please upload an image file';
+                return;
+            }
+            
+            logger.info(`Processing dropped image: ${file.name}`, {
+                type: file.type,
+                size: `${Math.round(file.size / 1024)} KB`
+            });
+            
+            // Show loading state
+            imagePreviewMessage.textContent = 'Loading image...';
+            imagePreview.style.display = 'none';
+            
+            try {
+                // Load the image
+                await imageProcessor.loadImage(file);
+                
+                // Update the preview
+                updateImagePreview();
+            } catch (err) {
+                logger.error('Error processing dropped image', { message: err.message });
+                imagePreviewMessage.textContent = `Error: ${err.message}`;
+            }
+        }
+    }
+}
+
 // Handle image upload
 async function handleImageUpload() {
     try {
@@ -285,7 +362,7 @@ function updateImagePreview() {
     if (!canvas) {
         imagePreview.style.display = 'none';
         imagePreviewMessage.style.display = 'block';
-        imagePreviewMessage.textContent = 'No image loaded';
+        imagePreviewMessage.textContent = 'Drop image here or click the upload button';
         imageSummary.innerHTML = '';
         return;
     }

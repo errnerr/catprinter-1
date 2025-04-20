@@ -345,6 +345,13 @@ h3 {
   display: flex;
   position: relative;
   background-color: #fff;
+  min-height: 200px;
+  border: 2px dashed #e53e3e;
+  transition: all 0.3s ease;
+}
+
+#imageModeContent .image-container {
+  border: 1px dashed #e53e3e;
 }
 
 #imagePreview {
@@ -359,6 +366,7 @@ h3 {
   color: #777;
   text-align: center;
   padding: 1rem;
+  font-weight: 500;
 }
 
 .image-summary {
@@ -369,6 +377,22 @@ h3 {
   font-size: 0.7rem;
   width: 100%;
   box-sizing: border-box;
+}
+
+/* Drag and Drop styles */
+#dropZone {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+#dropZone.drag-over {
+  background-color: #f7f7f7;
+  border-color: #c53030;
+  box-shadow: inset 0 0 0 2px #c53030;
+}
+
+#dropMessage {
+  display: none;
 }
 
 /* Printer log panel */
