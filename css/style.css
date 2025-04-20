@@ -325,15 +325,15 @@ h3 {
   transform-origin: top left;
 }
 
-/* Image Preview Panel */
+/* Image Preview Panel - Updated for consistency */
 .image-wrapper {
-  background-color: #f7f7f7;
+  background-color: #fff;
   padding: 0.5rem;
   flex: 1;
   overflow: auto;
   display: flex;
   flex-direction: column;
-  border: 1px dashed #c53030;
+  border: 1px solid #e53e3e;
 }
 
 .image-container {
@@ -347,11 +347,6 @@ h3 {
   background-color: #fff;
   min-height: 200px;
   border: 2px dashed #e53e3e;
-  transition: all 0.3s ease;
-}
-
-#imageModeContent .image-container {
-  border: 1px dashed #e53e3e;
 }
 
 #imagePreview {
@@ -362,37 +357,26 @@ h3 {
 }
 
 #imagePreviewMessage {
-  font-size: 0.9rem;
-  color: #777;
+  font-size: 0.8rem;
+  color: #742a2a;
   text-align: center;
   padding: 1rem;
   font-weight: 500;
 }
 
-.image-summary {
-  margin-top: 0.3rem;
-  padding: 0.3rem;
-  border: 1px solid #e53e3e;
-  background-color: #fff5f5;
-  font-size: 0.7rem;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* Drag and Drop styles */
+/* Drag and Drop styles - Updated for consistency */
 #dropZone {
   position: relative;
   transition: all 0.3s ease;
 }
 
 #dropZone.drag-over {
-  background-color: #f7f7f7;
-  border-color: #c53030;
-  box-shadow: inset 0 0 0 2px #c53030;
+  background-color: #fff5f5;
 }
 
-#dropMessage {
-  display: none;
+#dropZone.drag-over .image-container {
+  border-color: #c53030;
+  border-style: solid;
 }
 
 /* Printer log panel */
@@ -503,6 +487,9 @@ h3 {
   max-height: 150px;
   overflow-y: auto;
   border: 1px solid #ddd;
+  min-height: 40px;
+  background-color: #fff;
+  width: 100%;
 }
 
 #itemsList:empty {
@@ -514,6 +501,12 @@ h3 {
 
 #itemsList:empty::before {
   content: 'No items added yet';
+  display: block;
+  padding: 10px;
+  color: #888;
+  font-style: italic;
+  text-align: left;
+  width: 100%;
 }
 
 .item-row {
@@ -521,7 +514,7 @@ h3 {
   align-items: center;
   padding: 0.2rem 0.3rem;
   border-bottom: 1px solid #eee;
-  background-color: #fafafa;
+  width: 100%;
 }
 
 .item-row:last-child {
@@ -530,26 +523,56 @@ h3 {
 
 .item-name {
   flex: 1;
-  font-weight: 500;
-  font-size: 0.8rem;
 }
 
 .item-price {
-  width: 60px;
-  text-align: right;
+  margin-right: 10px;
   font-weight: 500;
-  font-size: 0.8rem;
 }
 
 .item-delete {
-  margin-left: 0.3rem;
   cursor: pointer;
-  color: #d33;
-  font-weight: bold;
-  font-size: 1rem;
+  color: #c53030;
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 0 5px;
 }
 
-/* Buttons */
+.item-delete:hover {
+  color: #9b2c2c;
+}
+
+/* Item entry styling */
+.item-entry {
+  border: 1px solid #ddd;
+  padding: 0.3rem;
+  background-color: #fafafa;
+  margin-top: 0.3rem;
+}
+
+.item-entry .flex-row {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.item-entry .input-group {
+  margin-bottom: 0;
+}
+
+#newItemName, #newItemPrice {
+  height: 32px;
+}
+
+#addItemBtn {
+  height: 32px;
+  background-color: #2b6cb0;
+  color: white;
+  border-color: #2b6cb0;
+  padding: 0.3rem 0.6rem;
+}
+
+/* Buttons - updated for consistency */
 button {
   cursor: pointer;
   padding: 0.2rem 0.4rem;
@@ -557,6 +580,7 @@ button {
   font-size: 0.75rem;
   font-weight: 500;
   background-color: #f5f5f5;
+  border-radius: 2px;
 }
 
 .btn-primary {
@@ -589,10 +613,10 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* Action buttons container to accommodate additional button */
+/* Action buttons container */
 .action-buttons {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   margin-top: 0.5rem;
   flex-wrap: wrap;
   gap: 8px;
@@ -601,6 +625,51 @@ button:disabled {
 .action-buttons button {
   padding: 0.3rem 0.6rem;
   font-size: 0.8rem;
+}
+
+/* Image mode specific button styling */
+.image-config-panel .btn-primary {
+  background-color: #c53030;
+  border-color: #c53030;
+}
+
+.image-config-panel .btn-primary:hover {
+  background-color: #9b2c2c;
+}
+
+/* Reset button consistent styling */
+#resetBtn, #resetImageBtn {
+  background-color: #666;
+  color: white;
+  border-color: #666;
+}
+
+#resetBtn:hover, #resetImageBtn:hover {
+  background-color: #555;
+}
+
+/* Make all status indicators consistent */
+.printing-status {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 0.3rem;
+  color: white;
+  text-align: center;
+  transform: translateY(-100%);
+  transition: transform 0.3s;
+  z-index: 10;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+#receiptModeContent ~ .printing-status {
+  background-color: #3182ce;
+}
+
+#imageModeContent ~ .printing-status {
+  background-color: #c53030;
 }
 
 /* Footer */
@@ -734,4 +803,59 @@ footer a:hover {
 
 .summary-total {
   font-weight: bold;
+}
+
+/* File upload styling - updated for design consistency */
+.file-upload-container {
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 0;
+  padding: 0;
+  overflow: hidden;
+  width: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.image-config-panel .file-upload-container {
+  border-color: #e53e3e;
+}
+
+.file-upload-container input[type="file"] {
+  height: auto;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: #333;
+}
+
+/* Remove the default file input button */
+.file-upload-container input[type="file"]::-webkit-file-upload-button {
+  padding: 0.2rem 0.4rem;
+  margin-right: 8px; 
+  border: none;
+  background: #f5f5f5;
+  color: #333;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-right: 1px solid #ccc;
+  height: 1.6rem;
+}
+
+.image-config-panel .file-upload-container input[type="file"]::-webkit-file-upload-button {
+  background: #fff5f5;
+  color: #c53030;
+  border-right: 1px solid #e53e3e;
+}
+
+.file-upload-container input[type="file"]::-webkit-file-upload-button:hover {
+  background: #e6e6e6;
+}
+
+.image-config-panel .file-upload-container input[type="file"]::-webkit-file-upload-button:hover {
+  background: #fed7d7;
 }
