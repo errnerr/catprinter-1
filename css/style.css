@@ -555,10 +555,23 @@ button {
   background-color: #555;
 }
 
+/* Connect button and print button styles */
+.connect-btn {
+  margin-right: 8px;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Action buttons container to accommodate additional button */
 .action-buttons {
   display: flex;
   justify-content: space-between;
   margin-top: 0.5rem;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .action-buttons button {
@@ -577,6 +590,7 @@ footer {
   height: 22px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
 }
 
 footer a {
@@ -586,6 +600,36 @@ footer a {
 
 footer a:hover {
   text-decoration: underline;
+}
+
+/* Battery indicator styles */
+.battery-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.battery-icon {
+  display: inline-block;
+  font-size: 0.8rem;
+  margin-right: 1px;
+}
+
+.battery-level {
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+.battery-level.low {
+  color: #c53030;
+}
+
+.battery-level.medium {
+  color: #dd6b20;
+}
+
+.battery-level.high {
+  color: #2f855a;
 }
 
 /* Printing status */

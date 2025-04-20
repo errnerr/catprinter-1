@@ -1,4 +1,4 @@
-import { connectPrinter, printImage } from './printer.js';
+import { connectPrinter, printImage, getBatteryLevel, isPrinterConnected, getLastKnownBatteryLevel } from './printer.js';
 import { renderReceipt, updateReceiptPreview } from './receiptRenderer.js';
 import { logger, setupLoggerUI } from './logger.js';
 import * as imageProcessor from './imageProcessor.js';
@@ -9,6 +9,11 @@ const receiptModeBtn = document.getElementById('receiptModeBtn');
 const imageModeBtn = document.getElementById('imageModeBtn');
 const receiptModeContent = document.getElementById('receiptModeContent');
 const imageModeContent = document.getElementById('imageModeContent');
+
+// Battery indicator elements
+const batteryIndicator = document.getElementById('batteryIndicator');
+const batteryLevel = document.getElementById('batteryLevel');
+const batteryIcon = document.querySelector('.battery-icon');
 
 // Receipt Mode Elements
 // Business info
@@ -34,6 +39,7 @@ const changeAmountDisplay = document.getElementById('changeAmount');
 // Footer
 const footerMessageInput = document.getElementById('footerMessage');
 // Buttons
+const connectReceiptBtn = document.getElementById('connectReceiptBtn');
 const printReceiptBtn = document.getElementById('printReceiptBtn');
 const resetBtn = document.getElementById('resetBtn');
 // Receipt preview
@@ -50,6 +56,7 @@ const imageInvertInput = document.getElementById('imageInvert');
 const imageWidthInput = document.getElementById('imageWidth');
 const autoscaleImageInput = document.getElementById('autoscaleImage');
 const imagePaddingInput = document.getElementById('imagePadding');
+const connectImageBtn = document.getElementById('connectImageBtn');
 const resetImageBtn = document.getElementById('resetImageBtn');
 const printImageBtn = document.getElementById('printImageBtn');
 const imagePreview = document.getElementById('imagePreview');
@@ -65,6 +72,10 @@ const printProgressBar = document.getElementById('printProgressBar');
 let items = [];
 let currentDateTime = new Date().toLocaleString();
 let currentMode = 'receipt'; // 'receipt' or 'image'
+
+// === Battery Level Timer ===
+let batteryCheckIntervalId = null;
+const BATTERY_CHECK_INTERVAL = 30000; // 30 seconds
 
 // === Initialize ===
 function init() {
@@ -87,6 +98,12 @@ function init() {
     
     // Set up image mode listeners
     setupImageModeListeners();
+    
+    // Set up connect buttons
+    setupConnectButtons();
+    
+    // Initialize print buttons (disabled by default)
+    updatePrintButtonState();
 }
 
 // Initialize the logger UI
@@ -350,16 +367,21 @@ async function printProcessedImage() {
     }
     
     try {
+        // Check if printer is connected
+        if (!isPrinterConnected()) {
+            logger.warn('Printer not connected');
+            showPrintingStatus('Please connect to printer first', 'error');
+            setTimeout(() => hidePrintingStatus(), 3000);
+            return;
+        }
+        
         // Show printing status
-        showPrintingStatus('Connecting to printer...');
+        showPrintingStatus('Printing image...');
         
         // Log print job starting
         logger.info('Starting new print job');
-        logger.info('Connecting to printer');
         
-        // Connect to printer and print
-        await connectPrinter();
-        showPrintingStatus('Printing image...');
+        // Print the image
         await printImage(canvas);
         
         // Show success message
@@ -371,6 +393,145 @@ async function printProcessedImage() {
         showPrintingStatus(`Error: ${err.message}`, 'error');
         setTimeout(() => hidePrintingStatus(), 5000);
     }
+}
+
+// === Connection and Battery Status ===
+function setupConnectButtons() {
+    // Add event listeners to both connect buttons
+    connectReceiptBtn.addEventListener('click', handleConnectPrinter);
+    connectImageBtn.addEventListener('click', handleConnectPrinter);
+}
+
+function updatePrintButtonState() {
+    const connected = isPrinterConnected();
+    
+    // Update print buttons
+    printReceiptBtn.disabled = !connected;
+    printImageBtn.disabled = !connected;
+    
+    if (connected) {
+        printReceiptBtn.classList.remove('btn-secondary');
+        printReceiptBtn.classList.add('btn-primary');
+        printImageBtn.classList.remove('btn-secondary');
+        printImageBtn.classList.add('btn-primary');
+    } else {
+        printReceiptBtn.classList.remove('btn-primary');
+        printReceiptBtn.classList.add('btn-secondary');
+        printImageBtn.classList.remove('btn-primary');
+        printImageBtn.classList.add('btn-secondary');
+    }
+    
+    // Update connect buttons
+    const buttonText = connected ? 'Reconnect' : 'Connect Printer';
+    connectReceiptBtn.textContent = buttonText;
+    connectImageBtn.textContent = buttonText;
+    
+    // Start or stop battery check based on connection status
+    if (connected && !batteryCheckIntervalId) {
+        startBatteryCheck();
+    } else if (!connected && batteryCheckIntervalId) {
+        stopBatteryCheck();
+    }
+}
+
+async function handleConnectPrinter() {
+    try {
+        showPrintingStatus('Connecting to printer...');
+        logger.info('Connecting to printer');
+        await connectPrinter();
+        
+        // Update battery immediately after connection
+        await updateBatteryStatus();
+        
+        // Start periodic battery check
+        startBatteryCheck();
+        
+        // Update print button state
+        updatePrintButtonState();
+        
+        showPrintingStatus('Printer connected successfully!', 'success');
+        setTimeout(() => hidePrintingStatus(), 3000);
+    } catch (err) {
+        console.error('Connection error:', err);
+        logger.error('Connection error', { message: err.message });
+        showPrintingStatus(`Error: ${err.message}`, 'error');
+        setTimeout(() => hidePrintingStatus(), 5000);
+    }
+}
+
+function startBatteryCheck() {
+    if (batteryCheckIntervalId) {
+        clearInterval(batteryCheckIntervalId);
+    }
+    
+    batteryCheckIntervalId = setInterval(async () => {
+        if (isPrinterConnected()) {
+            try {
+                await updateBatteryStatus();
+            } catch (error) {
+                logger.warn('Failed to update battery status', { error: error.message });
+            }
+        } else {
+            stopBatteryCheck();
+        }
+    }, BATTERY_CHECK_INTERVAL);
+    
+    logger.debug('Battery check interval started', { intervalMs: BATTERY_CHECK_INTERVAL });
+}
+
+function stopBatteryCheck() {
+    if (batteryCheckIntervalId) {
+        clearInterval(batteryCheckIntervalId);
+        batteryCheckIntervalId = null;
+        logger.debug('Battery check interval stopped');
+    }
+}
+
+async function updateBatteryStatus() {
+    try {
+        let level;
+        
+        if (isPrinterConnected()) {
+            // If connected, try to get fresh battery level
+            level = await getBatteryLevel();
+        } else {
+            // If not connected, use last known level
+            level = getLastKnownBatteryLevel();
+        }
+        
+        if (level !== null) {
+            updateBatteryIndicator(level);
+        }
+    } catch (error) {
+        logger.warn('Error getting battery level', { message: error.message });
+    }
+}
+
+function updateBatteryIndicator(level) {
+    // Update the UI to display battery level
+    if (level === null) {
+        batteryIndicator.style.display = 'none';
+        return;
+    }
+    
+    batteryIndicator.style.display = 'flex';
+    
+    // Show percentage
+    batteryLevel.textContent = `${level}%`;
+    
+    // Set color based on level
+    if (level < 20) {
+        batteryLevel.className = 'battery-level low';
+        batteryIcon.innerHTML = '🔋';
+    } else if (level < 50) {
+        batteryLevel.className = 'battery-level medium';
+        batteryIcon.innerHTML = '🔋';
+    } else {
+        batteryLevel.className = 'battery-level high';
+        batteryIcon.innerHTML = '🔋';
+    }
+    
+    logger.debug('Battery indicator updated', { level });
 }
 
 // === Item Management ===
@@ -555,12 +716,19 @@ function resetForm() {
 // === Printing ===
 async function printReceipt() {
     try {
+        // Check if printer is connected
+        if (!isPrinterConnected()) {
+            logger.warn('Printer not connected');
+            showPrintingStatus('Please connect to printer first', 'error');
+            setTimeout(() => hidePrintingStatus(), 3000);
+            return;
+        }
+        
         // Show printing status
-        showPrintingStatus('Connecting to printer...');
+        showPrintingStatus('Printing receipt...');
         
         // Log print job starting
         logger.info('Starting new print job');
-        logger.info('Connecting to printer');
         
         // Get receipt data and render to canvas
         const receiptData = getReceiptData();
@@ -572,9 +740,7 @@ async function printReceipt() {
             items: items.length
         });
         
-        // Connect to printer and print
-        await connectPrinter();
-        showPrintingStatus('Printing receipt...');
+        // Print the image
         await printImage(canvas);
         
         // Show success message

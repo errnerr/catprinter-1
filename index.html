@@ -126,7 +126,8 @@ WWW.MYRESTAURANT.COM</textarea>
                     
                     <div class="action-buttons">
                         <button id="resetBtn" class="btn-secondary">Reset</button>
-                        <button id="printReceiptBtn" class="btn-primary">Print</button>
+                        <button id="connectReceiptBtn" class="btn btn-primary connect-btn">Connect Printer</button>
+                        <button id="printReceiptBtn" class="btn-primary" disabled>Print</button>
                     </div>
                 </section>
 
@@ -202,7 +203,8 @@ WWW.MYRESTAURANT.COM</textarea>
                     
                     <div class="action-buttons">
                         <button id="resetImageBtn" class="btn-secondary">Reset</button>
-                        <button id="printImageBtn" class="btn-primary">Print</button>
+                        <button id="connectImageBtn" class="btn btn-primary connect-btn">Connect Printer</button>
+                        <button id="printImageBtn" class="btn-primary" disabled>Print</button>
                     </div>
                 </section>
 
@@ -244,6 +246,10 @@ WWW.MYRESTAURANT.COM</textarea>
 
     <footer>
         <p>MXW01 Tools | <a href="https://github.com/dropalltables/catprinter" target="_blank">catprinter</a></p>
+        <div class="battery-indicator" id="batteryIndicator">
+            <span class="battery-icon">🔋</span>
+            <span class="battery-level" id="batteryLevel">--</span>
+        </div>
     </footer>
 
     <script type="module" src="js/main.js"></script>

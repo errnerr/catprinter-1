@@ -10,9 +10,15 @@ const MAIN_SERVICE_UUID_ALT = '0000af30-0000-1000-8000-00805f9b34fb';
 const CONTROL_WRITE_UUID = '0000ae01-0000-1000-8000-00805f9b34fb';
 const DATA_WRITE_UUID = '0000ae03-0000-1000-8000-00805f9b34fb';
 
-const CommandIDs = { GET_STATUS: 0xA1, PRINT: 0xA9, PRINT_COMPLETE: 0xAA };
+const CommandIDs = { 
+  GET_STATUS: 0xA1, 
+  GET_BATTERY: 0xAB,
+  PRINT: 0xA9, 
+  PRINT_COMPLETE: 0xAA 
+};
 let notifyChar;
 let pendingResolvers = new Map();
+let lastKnownBatteryLevel = null;
 
 // CRC8 (Dallas/Maxim variant, Polynomial 0x07, Init 0x00) Lookup Table from catprinter.cmds
 const CRC8_TABLE = [
@@ -263,6 +269,107 @@ export async function connectPrinter() {
   notifyChar.addEventListener('characteristicvaluechanged', handleNotification);
   
   logger.success('Printer connected and ready');
+}
+
+export async function getBatteryLevel() {
+  logger.info('Querying battery level');
+  try {
+    // First try using the direct battery command (AB)
+    try {
+      await controlChar.writeValue(createCommand(CommandIDs.GET_BATTERY, Uint8Array.of(0x00)));
+      const batteryPayload = await waitForNotification(CommandIDs.GET_BATTERY, 5000);
+      if (batteryPayload && batteryPayload.length > 0) {
+        lastKnownBatteryLevel = batteryPayload[0];
+        logger.info('Battery level retrieved using AB command', { level: lastKnownBatteryLevel });
+        return lastKnownBatteryLevel;
+      }
+    } catch (e) {
+      logger.warn('Failed to get battery with AB command, falling back to status command', { error: e.message });
+    }
+    
+    // Fallback to status command (A1) which also includes battery level
+    const statusResult = await getPrinterStatus();
+    if (statusResult && statusResult.batteryLevel !== undefined) {
+      lastKnownBatteryLevel = statusResult.batteryLevel;
+      return lastKnownBatteryLevel;
+    }
+    
+    // Return last known level if we have it
+    if (lastKnownBatteryLevel !== null) {
+      logger.warn('Using cached battery level', { level: lastKnownBatteryLevel });
+      return lastKnownBatteryLevel;
+    }
+    
+    const error = 'Failed to retrieve battery level';
+    logger.error(error);
+    throw new Error(error);
+  } catch (error) {
+    logger.error('Error querying battery level', { message: error.message });
+    throw error;
+  }
+}
+
+export async function getPrinterStatus() {
+  if (!controlChar) {
+    logger.error('Not connected to printer');
+    throw new Error('Not connected to printer');
+  }
+  
+  try {
+    logger.debug('Requesting printer status');
+    await controlChar.writeValue(createCommand(CommandIDs.GET_STATUS, Uint8Array.of(0x00)));
+    const statusPayload = await waitForNotification(CommandIDs.GET_STATUS, 5000);
+    
+    if (!statusPayload) {
+      logger.warn('No status response received');
+      return null;
+    }
+    
+    const result = {
+      raw: statusPayload,
+      isError: false,
+      errorCode: null,
+      batteryLevel: null,
+      temperature: null,
+      statusCode: null
+    };
+    
+    // Extract information from payload
+    if (statusPayload.length >= 7) {
+      result.statusCode = statusPayload[6];
+    }
+    
+    if (statusPayload.length >= 10) {
+      result.batteryLevel = statusPayload[9];
+    }
+    
+    if (statusPayload.length >= 11) {
+      result.temperature = statusPayload[10];
+    }
+    
+    if (statusPayload.length >= 13 && statusPayload[12] !== 0) {
+      result.isError = true;
+      if (statusPayload.length >= 14) {
+        result.errorCode = statusPayload[13];
+      }
+    }
+    
+    logger.info('Printer status retrieved', result);
+    return result;
+  } catch (error) {
+    logger.error('Error querying printer status', { message: error.message });
+    throw error;
+  }
+}
+
+// Simple helper to check if we are connected
+export function isPrinterConnected() {
+  return !!(device && device.gatt.connected);
+}
+
+// Get last known battery level without making a BLE request
+export function getLastKnownBatteryLevel() {
+  return lastKnownBatteryLevel;
 }
 
 export async function printImage(canvas) {
