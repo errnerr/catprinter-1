@@ -56,6 +56,9 @@ const imageInvertInput = document.getElementById('imageInvert');
 const imageWidthInput = document.getElementById('imageWidth');
 const autoscaleImageInput = document.getElementById('autoscaleImage');
 const imagePaddingInput = document.getElementById('imagePadding');
+const rotateLeftBtn = document.getElementById('rotateLeftBtn');
+const rotateRightBtn = document.getElementById('rotateRightBtn');
+const rotationDisplay = document.getElementById('rotationDisplay');
 const connectImageBtn = document.getElementById('connectImageBtn');
 const resetImageBtn = document.getElementById('resetImageBtn');
 const printImageBtn = document.getElementById('printImageBtn');
@@ -245,6 +248,31 @@ function setupImageModeListeners() {
         updateImagePreview();
     });
     
+    // Rotate left button (counter-clockwise)
+    rotateLeftBtn.addEventListener('click', () => {
+        const settings = imageProcessor.getSettings();
+        // Calculate new rotation (0, 90, 180, 270) with wrap-around
+        let newRotation = (settings.rotation - 90) % 360;
+        if (newRotation < 0) newRotation += 360;
+        
+        imageProcessor.updateSettings({ rotation: newRotation });
+        rotationDisplay.textContent = `${newRotation}°`;
+        logger.info(`Image rotated to ${newRotation}°`);
+        updateImagePreview();
+    });
+    
+    // Rotate right button (clockwise)
+    rotateRightBtn.addEventListener('click', () => {
+        const settings = imageProcessor.getSettings();
+        // Calculate new rotation (0, 90, 180, 270) with wrap-around
+        const newRotation = (settings.rotation + 90) % 360;
+        
+        imageProcessor.updateSettings({ rotation: newRotation });
+        rotationDisplay.textContent = `${newRotation}°`;
+        logger.info(`Image rotated to ${newRotation}°`);
+        updateImagePreview();
+    });
+    
     // Reset image settings
     resetImageBtn.addEventListener('click', resetImageSettings);
     
@@ -410,6 +438,9 @@ function updateImageSummary() {
         </div>
         <div class="summary-row">
             <span>Inverted:</span> <span>${summary.invert ? 'Yes' : 'No'}</span>
+        </div>
+        <div class="summary-row">
+            <span>Rotation:</span> <span>${summary.rotation}°</span>
         </div>
     </div>`;
 }

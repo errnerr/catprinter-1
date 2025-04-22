@@ -10,7 +10,8 @@ let imageProcessingSettings = {
     invert: false,
     width: PRINTER_WIDTH,
     autoscale: true,
-    padding: 10
+    padding: 10,
+    rotation: 0 // Rotation in degrees (0, 90, 180, 270)
 };
 
 // Cache for processed images to avoid re-processing when only preview needs updating
@@ -57,7 +58,8 @@ export function updateSettings(settings) {
     const processingChanged = 
         oldSettings.ditherMethod !== imageProcessingSettings.ditherMethod ||
         oldSettings.threshold !== imageProcessingSettings.threshold ||
-        oldSettings.invert !== imageProcessingSettings.invert;
+        oldSettings.invert !== imageProcessingSettings.invert ||
+        oldSettings.rotation !== imageProcessingSettings.rotation;
     
     if (processingChanged) {
         processedImageCache = null;
@@ -94,31 +96,75 @@ export function processImage() {
     let destWidth = imageProcessingSettings.width;
     let destHeight;
     
+    // Adjust dimensions based on rotation
+    const rotation = imageProcessingSettings.rotation;
+    const isRotated90or270 = (rotation === 90 || rotation === 270);
+    
     if (imageProcessingSettings.autoscale) {
-        // Scale maintaining aspect ratio
-        const aspectRatio = currentImage.height / currentImage.width;
+        // Scale maintaining aspect ratio, taking rotation into account
+        const aspectRatio = isRotated90or270 ? 
+            (currentImage.width / currentImage.height) : 
+            (currentImage.height / currentImage.width);
         destHeight = Math.round(destWidth * aspectRatio);
     } else {
         // Use original dimensions but cap at printer width
         destWidth = Math.min(currentImage.width, PRINTER_WIDTH);
         destHeight = currentImage.height;
+        
+        // Swap dimensions if rotated by 90 or 270 degrees
+        if (isRotated90or270) {
+            [destWidth, destHeight] = [destHeight, destWidth];
+            // Ensure we don't exceed printer width
+            if (destWidth > PRINTER_WIDTH) {
+                const scale = PRINTER_WIDTH / destWidth;
+                destWidth = PRINTER_WIDTH;
+                destHeight = Math.round(destHeight * scale);
+            }
+        }
     }
     
     // Add padding
     const padding = imageProcessingSettings.padding;
-    canvas.width = destWidth;
-    canvas.height = destHeight + (padding * 2);
+    
+    // Set canvas dimensions based on rotation
+    if (isRotated90or270) {
+        canvas.width = destWidth;
+        canvas.height = destHeight + (padding * 2);
+    } else {
+        canvas.width = destWidth;
+        canvas.height = destHeight + (padding * 2);
+    }
     
     // Draw with padding
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Draw image centered with padding
-    ctx.drawImage(
-        currentImage, 
-        0, 0, currentImage.width, currentImage.height,
-        0, padding, destWidth, destHeight
-    );
+    // Apply rotation transformation
+    ctx.save();
+    
+    // Move to the center of the image area
+    ctx.translate(destWidth / 2, padding + destHeight / 2);
+    
+    // Rotate by the specified angle
+    ctx.rotate((rotation * Math.PI) / 180);
+    
+    // Draw image centered, taking into account rotation
+    if (isRotated90or270) {
+        ctx.drawImage(
+            currentImage,
+            0, 0, currentImage.width, currentImage.height,
+            -destHeight / 2, -destWidth / 2, destHeight, destWidth
+        );
+    } else {
+        ctx.drawImage(
+            currentImage,
+            0, 0, currentImage.width, currentImage.height,
+            -destWidth / 2, -destHeight / 2, destWidth, destHeight
+        );
+    }
+    
+    // Restore the context
+    ctx.restore();
     
     // Apply image processing
     applyImageProcessing(canvas, imageProcessingSettings);
@@ -129,7 +175,8 @@ export function processImage() {
     logger.info('Image processed', {
         width: canvas.width,
         height: canvas.height,
-        method: imageProcessingSettings.ditherMethod
+        method: imageProcessingSettings.ditherMethod,
+        rotation: imageProcessingSettings.rotation
     });
     
     return canvas;
@@ -339,7 +386,8 @@ export function getImageSummary() {
         aspectRatio: (currentImage.width / currentImage.height).toFixed(2),
         ditherMethod: imageProcessingSettings.ditherMethod,
         threshold: imageProcessingSettings.threshold,
-        invert: imageProcessingSettings.invert
+        invert: imageProcessingSettings.invert,
+        rotation: imageProcessingSettings.rotation
     };
 }
 
@@ -351,7 +399,8 @@ export function resetSettings() {
         invert: false,
         width: PRINTER_WIDTH,
         autoscale: true,
-        padding: 10
+        padding: 10,
+        rotation: 0
     };
     processedImageCache = null;
     return {...imageProcessingSettings};
