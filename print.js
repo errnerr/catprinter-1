@@ -5,6 +5,7 @@
 
 const path = require('path');
 const { registerFont, createCanvas } = require('canvas');
+const { spawn } = require('child_process');
 
 // Register DotMatrix font if available
 const fontPath = path.join(__dirname, 'fonts', 'dotmatrix.ttf');
@@ -17,11 +18,12 @@ try {
   console.warn('[WARN] DotMatrix font not loaded, using system monospace font.');
 }
 
-const noble = require('@abandonware/noble');
-
-const MAIN_SERVICE_UUID = '0000ae30-0000-1000-8000-00805f9b34fb';
-const CONTROL_WRITE_UUID = '0000ae01-0000-1000-8000-00805f9b34fb';
-const DATA_WRITE_UUID = '0000ae03-0000-1000-8000-00805f9b34fb';
+try {
+  registerFont(path.join(__dirname, 'fonts', 'dotmatrixbold.ttf'), { family: 'DotMatrixBold' });
+  console.log('[DEBUG] DotMatrixBold font loaded from dotmatrixbold.ttf');
+} catch (e) {
+  console.warn('[WARN] DotMatrixBold font not loaded, using regular font.');
+}
 
 const PRINTER_WIDTH = 384;
 const PRINTER_WIDTH_BYTES = PRINTER_WIDTH / 8;
@@ -107,7 +109,7 @@ function textToImageRows(text) {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = 'black';
   ctx.textBaseline = 'top';
-  ctx.font = `${fontSize}px DotMatrix, monospace`;
+  ctx.font = `${fontSize}px DotMatrixBold, DotMatrix, monospace`;
   let y = 10;
   for (const line of lines) {
     ctx.textAlign = 'left';
@@ -115,18 +117,30 @@ function textToImageRows(text) {
     y += lineHeight;
   }
 
-  // Save debug PNG
-  try {
-    const fs = require('fs');
-    const out = fs.createWriteStream('debug-receipt.png');
-    const stream = canvas.createPNGStream();
-    stream.pipe(out);
-    out.on('finish', () => console.log('[DEBUG] Saved debug-receipt.png'));
-  } catch (e) {
-    console.warn('[WARN] Could not save debug-receipt.png:', e);
-  }
-
+  // Invert the image before saving
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  for (let i = 0; i < imageData.data.length; i += 4) {
+    // Invert R, G, B channels
+    imageData.data[i] = 255 - imageData.data[i];     // R
+    imageData.data[i+1] = 255 - imageData.data[i+1]; // G
+    imageData.data[i+2] = 255 - imageData.data[i+2]; // B
+    // Alpha remains unchanged
+  }
+  ctx.putImageData(imageData, 0, 0);
+
+  // Save debug PNG (returns a promise)
+  const fs = require('fs');
+  const out = fs.createWriteStream('debug-receipt.png');
+  const stream = canvas.createPNGStream();
+  const savePromise = new Promise((resolve, reject) => {
+    stream.pipe(out);
+    out.on('finish', () => {
+      console.log('[DEBUG] Saved debug-receipt.png');
+      resolve();
+    });
+    out.on('error', reject);
+  });
+
   const rows = [];
   for (let y = 0; y < canvas.height; y++) {
     const row = [];
@@ -139,110 +153,7 @@ function textToImageRows(text) {
   }
   // Remove empty rows at the bottom
   while (rows.length && rows[rows.length - 1].every(v => !v)) rows.pop();
-  return rows;
-}
-
-async function connectAndPrint(deviceName, message) {
-  return new Promise((resolve, reject) => {
-    console.log('[DEBUG] Waiting for Bluetooth adapter state...');
-    noble.on('stateChange', async (state) => {
-      console.log('[DEBUG] Adapter state:', state);
-      if (state === 'poweredOn') {
-        try {
-          console.log('[DEBUG] Starting scan for all BLE devices...');
-          noble.startScanning([], false);
-        } catch (err) {
-          reject(err);
-        }
-      } else {
-        noble.stopScanning();
-        reject(new Error('Bluetooth adapter not powered on.'));
-      }
-    });
-
-    noble.on('discover', async (peripheral) => {
-      const name = peripheral.advertisement && peripheral.advertisement.localName ? peripheral.advertisement.localName : '(no name)';
-      console.log(`${peripheral.address}: ${name}`);
-      if (name === deviceName) {
-        noble.stopScanning();
-        try {
-          console.log('[DEBUG] Connecting to peripheral...');
-          await peripheral.connectAsync();
-          console.log('[DEBUG] Connected! Discovering services/characteristics...');
-          const services = await peripheral.discoverServicesAsync([]);
-          for (const service of services) {
-            console.log(`[DEBUG] Service: ${service.uuid}`);
-            const chars = await service.discoverCharacteristicsAsync([]);
-            for (const char of chars) {
-              const props = char.properties ? char.properties.join(',') : '';
-              console.log(`  [DEBUG] Characteristic: ${char.uuid} [${props}]`);
-            }
-          }
-          // Find the correct service by short UUID
-          const service = services.find(s => s.uuid.slice(-4) === 'ae30');
-          if (!service) throw new Error('Printer service (ae30) not found');
-          const chars = await service.discoverCharacteristicsAsync([]);
-          const dataChar = chars.find(c => c.uuid.slice(-4) === 'ae03');
-          const controlChar = chars.find(c => c.uuid.slice(-4) === 'ae01');
-          const notifyChar = chars.find(c => c.uuid.slice(-4) === 'ae02');
-          if (!dataChar || !controlChar) throw new Error('Printer characteristics not found');
-
-          if (notifyChar) {
-            await notifyChar.subscribeAsync();
-            console.log('[DEBUG] Subscribed to notifications on ae02');
-          }
-
-          // Render text to image rows and prepare buffer
-          console.log('[DEBUG] Rendering text and preparing image buffer...');
-          const imageRows = textToImageRows(message);
-          const imageBuffer = prepareImageDataBuffer(imageRows);
-
-          // Send print command (set intensity, send data, print request)
-          console.log('[DEBUG] Sending set intensity command...');
-          await controlChar.writeAsync(createCommand(0xA2, Uint8Array.of(0x5D)), false); // Set intensity
-
-          // Send image data in 244-byte chunks with delay
-          console.log('[DEBUG] Sending image data...');
-          for (let i = 0; i < imageBuffer.length; i += 244) {
-            const chunk = imageBuffer.slice(i, i + 244);
-            await dataChar.writeAsync(chunk, false);
-            await new Promise(res => setTimeout(res, 50)); // 50ms delay
-          }
-
-          // Print request: number of lines = imageRows.length
-          console.log('[DEBUG] Sending print request...');
-          await controlChar.writeAsync(createCommand(0xA9, new Uint8Array([
-            imageRows.length & 0xFF,
-            (imageRows.length >> 8) & 0xFF,
-            0x30, // fixed
-            0x00  // mode
-          ])), false);
-
-          // Wait for a notification from ae02 before disconnecting
-          console.log('[DEBUG] Waiting for notification from ae02...');
-          let notificationReceived = false;
-          if (notifyChar) {
-            const onNotify = (data) => {
-              notificationReceived = true;
-              console.log('[DEBUG] Notification received from ae02:', data.toString('hex'));
-            };
-            notifyChar.on('data', onNotify);
-            // Wait up to 3 seconds for a notification
-            for (let i = 0; i < 30 && !notificationReceived; i++) {
-              await new Promise(res => setTimeout(res, 100));
-            }
-            notifyChar.removeListener('data', onNotify);
-          }
-
-          console.log('[DEBUG] Print command sent. Disconnecting...');
-          await peripheral.disconnectAsync();
-          resolve();
-        } catch (err) {
-          reject(err);
-        }
-      }
-    });
-  });
+  return { rows, savePromise };
 }
 
 async function main() {
@@ -252,16 +163,21 @@ async function main() {
     console.error('Usage: node print.js <printer-name> "Your message here"');
     process.exit(1);
   }
-  console.log('Connecting to printer named', deviceName);
-  console.log('Printing:', message);
-  try {
-    await connectAndPrint(deviceName, message);
-    console.log('Print successful!');
-    process.exit(0);
-  } catch (err) {
-    console.error('Print failed:', err.message);
-    process.exit(1);
-  }
+  console.log('Rendering text to image...');
+  const { savePromise } = textToImageRows(message); // always saves as debug-receipt.png
+  await savePromise;
+  const imagePath = 'debug-receipt.png';
+  console.log('Calling Python print worker...');
+  const py = spawn('python3', ['simple_print_worker.py', imagePath, deviceName], { stdio: 'inherit' });
+  py.on('close', (code) => {
+    if (code === 0) {
+      console.log('Print job sent successfully!');
+      process.exit(0);
+    } else {
+      console.error('Print worker failed with code', code);
+      process.exit(1);
+    }
+  });
 }
 
 main(); 
