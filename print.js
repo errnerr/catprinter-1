@@ -117,21 +117,19 @@ function textToImageRows(text) {
     y += lineHeight;
   }
 
-  // Invert the image before saving
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  for (let i = 0; i < imageData.data.length; i += 4) {
-    // Invert R, G, B channels
-    imageData.data[i] = 255 - imageData.data[i];     // R
-    imageData.data[i+1] = 255 - imageData.data[i+1]; // G
-    imageData.data[i+2] = 255 - imageData.data[i+2]; // B
-    // Alpha remains unchanged
-  }
-  ctx.putImageData(imageData, 0, 0);
+  let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+  // Rotate the image 180 degrees
+  const rotatedCanvas = createCanvas(canvas.width, canvas.height);
+  const rotatedCtx = rotatedCanvas.getContext('2d');
+  rotatedCtx.translate(canvas.width, canvas.height);
+  rotatedCtx.rotate(Math.PI);
+  rotatedCtx.drawImage(canvas, 0, 0);
 
   // Save debug PNG (returns a promise)
   const fs = require('fs');
   const out = fs.createWriteStream('debug-receipt.png');
-  const stream = canvas.createPNGStream();
+  const stream = rotatedCanvas.createPNGStream();
   const savePromise = new Promise((resolve, reject) => {
     stream.pipe(out);
     out.on('finish', () => {
@@ -157,19 +155,19 @@ function textToImageRows(text) {
 }
 
 async function main() {
-  const [deviceName, ...msgParts] = process.argv.slice(2);
+  const [macAddr, ...msgParts] = process.argv.slice(2);
   const message = msgParts.join(' ');
-  if (!deviceName || !message) {
-    console.error('Usage: node print.js <printer-name> "Your message here"');
+  if (!macAddr || !message) {
+    console.error('Usage: node print.js <printer-mac-address> "Your message here"');
     process.exit(1);
   }
   console.log('Rendering text to image...');
   const { savePromise } = textToImageRows(message); // always saves as debug-receipt.png
   await savePromise;
   const imagePath = 'debug-receipt.png';
-  console.log('Calling Python print worker...');
-  const py = spawn('python3', ['simple_print_worker.py', imagePath, deviceName], { stdio: 'inherit' });
-  py.on('close', (code) => {
+  console.log('Calling Go print worker...');
+  const go = spawn('./catprinter', [imagePath, macAddr], { stdio: 'inherit' });
+  go.on('close', (code) => {
     if (code === 0) {
       console.log('Print job sent successfully!');
       process.exit(0);
