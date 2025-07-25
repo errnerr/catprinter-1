@@ -6,6 +6,7 @@
 const path = require('path');
 const { registerFont, createCanvas } = require('canvas');
 const { spawn } = require('child_process');
+const { shouldPrintDate } = require('./printTracker');
 
 // Register DotMatrix font if available
 const fontPath = path.join(__dirname, 'fonts', 'dotmatrix.ttf');
@@ -98,11 +99,25 @@ function prepareImageDataBuffer(imageRowsBool) {
   return buffer;
 }
 
-function textToImageRows(text) {
+function textToImageRows(text, includeDateHeader = false) {
   // Render multi-line text to a canvas, using DotMatrix or monospace font
   const fontSize = 18;
   const lineHeight = 22;
-  const lines = text.split(/\r?\n/);
+  
+  let lines = text.split(/\r?\n/);
+  
+  // Add date footer if requested
+  if (includeDateHeader) {
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    lines = [...lines, '', dateStr]; // Add empty line, then date at the end
+  }
+  
   const canvas = createCanvas(PRINTER_WIDTH, lines.length * lineHeight + 20);
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = 'white';
@@ -110,10 +125,24 @@ function textToImageRows(text) {
   ctx.fillStyle = 'black';
   ctx.textBaseline = 'top';
   ctx.font = `${fontSize}px DotMatrixBold, DotMatrix, monospace`;
+  
   let y = 10;
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     ctx.textAlign = 'left';
-    ctx.fillText(line, 0, y);
+    
+    // If this is the date footer (last line when includeDateHeader is true)
+    if (includeDateHeader && i === lines.length - 1) {
+      // Draw inverted background for date footer
+      const textWidth = ctx.measureText(line).width;
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0, y - 2, textWidth + 4, lineHeight);
+      ctx.fillStyle = 'white';
+      ctx.fillText(line, 2, y);
+      ctx.fillStyle = 'black'; // Reset for other text
+    } else {
+      ctx.fillText(line, 0, y);
+    }
     y += lineHeight;
   }
 
@@ -162,7 +191,11 @@ async function main() {
     process.exit(1);
   }
   console.log('Rendering text to image...');
-  const { savePromise } = textToImageRows(message); // always saves as debug-receipt.png
+  const includeDateHeader = shouldPrintDate();
+  if (includeDateHeader) {
+    console.log('First print of the day - adding date footer');
+  }
+  const { savePromise } = textToImageRows(message, includeDateHeader); // always saves as debug-receipt.png
   await savePromise;
   const imagePath = 'debug-receipt.png';
   console.log('Calling Go print worker...');

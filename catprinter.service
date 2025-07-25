@@ -1,0 +1,15 @@
+[Unit]
+Description=Cat Printer Web Server
+After=network.target bluetooth.service
+
+[Service]
+Type=simple
+User=yourusername
+WorkingDirectory=/path/to/your/catprinter
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=10
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target 
