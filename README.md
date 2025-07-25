@@ -22,7 +22,7 @@ cd <repo-directory>
 
 ### 2. Install Node.js dependencies
 ```sh
-npm install canvas
+npm install canvas express body-parser
 ```
 
 ### 3. Install Go and build the print worker
@@ -32,6 +32,8 @@ npm install canvas
   ```
 - Build the Go print worker:
   ```sh
+  go get github.com/go-ble/ble/linux/att@v0.0.0-20240122180141-8c5522f54333
+  go get github.com/go-ble/ble/linux/hci/socket@v0.0.0-20240122180141-8c5522f54333
   go build -o catprinter catprinter.go
   chmod +x catprinter
   ```
@@ -53,6 +55,12 @@ node print.js <printer-mac-address> "Your message here"
 - This will:
   1. Render the message as a PNG (rotated 180°, black text on white background)
   2. Call the Go print worker to send the image to your printer via BLE
+
+Run the server
+  ```sh
+     node server.js
+  ```
+Open http://<your-server-ip>:3000 on your machine to print
 
 ### 6. Troubleshooting
 - Make sure your printer is on and not connected to any other device.

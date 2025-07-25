@@ -6,17 +6,85 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="https://unpkg.com/chota@latest">
 </head>
-<body>
+<body class="dark">
   <main class="container">
     <h2 class="text-center">Cat Printer 😸</h2>
-    <form method="POST" action="/print">
+    <form id="printForm" method="POST" action="/print">
       <div class="row">
         <textarea name="message" rows="5" placeholder="Type your message..." required class="col-12"></textarea>
       </div>
       <div class="row">
-        <button class="button dark col-12" type="submit">Print</button>
+        <button id="printBtn" class="button dark col-12" type="submit">Print</button>
       </div>
+      <div id="status" class="text-center"></div>
     </form>
   </main>
+  <script>
+    const form = document.getElementById('printForm');
+    const btn = document.getElementById('printBtn');
+    const statusDiv = document.getElementById('status');
+
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      btn.disabled = true;
+      btn.textContent = 'Printing...';
+      statusDiv.textContent = '';
+      const formData = new FormData(form);
+      const message = formData.get('message');
+      
+      const maxRetries = 3;
+      let attempt = 0;
+      let timeout;
+      
+      async function attemptPrint() {
+        attempt++;
+        statusDiv.textContent = `Attempt ${attempt}/${maxRetries}...`;
+        
+        try {
+          timeout = setTimeout(() => {
+            statusDiv.textContent = `Attempt ${attempt} timed out.`;
+            if (attempt < maxRetries) {
+              setTimeout(attemptPrint, 1000); // Wait 1 second before retry
+            } else {
+              statusDiv.textContent = 'Print failed after all attempts. Please try again.';
+              btn.disabled = false;
+              btn.textContent = 'Print';
+            }
+          }, 30000); // 30 seconds timeout
+
+          const response = await fetch('/print', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ message })
+          });
+          
+          clearTimeout(timeout);
+          
+          if (response.ok) {
+            statusDiv.textContent = 'Printed!';
+            form.reset();
+            btn.disabled = false;
+            btn.textContent = 'Print';
+          } else {
+            throw new Error(`HTTP ${response.status}`);
+          }
+        } catch (err) {
+          clearTimeout(timeout);
+          console.error(`Attempt ${attempt} failed:`, err);
+          
+          if (attempt < maxRetries) {
+            statusDiv.textContent = `Attempt ${attempt} failed. Retrying...`;
+            setTimeout(attemptPrint, 1000); // Wait 1 second before retry
+          } else {
+            statusDiv.textContent = 'Print failed after all attempts. Please try again.';
+            btn.disabled = false;
+            btn.textContent = 'Print';
+          }
+        }
+      }
+      
+      attemptPrint();
+    });
+  </script>
 </body>
 </html>

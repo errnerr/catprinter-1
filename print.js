@@ -166,7 +166,16 @@ async function main() {
   await savePromise;
   const imagePath = 'debug-receipt.png';
   console.log('Calling Go print worker...');
-  const go = spawn('./catprinter', [imagePath, macAddr], { stdio: 'inherit' });
+  const go = spawn('./catprinter', [imagePath, macAddr], { 
+    stdio: ['inherit', 'inherit', 'inherit'],
+    cwd: __dirname
+  });
+  
+  go.on('error', (err) => {
+    console.error('Failed to start Go worker:', err);
+    process.exit(1);
+  });
+  
   go.on('close', (code) => {
     if (code === 0) {
       console.log('Print job sent successfully!');

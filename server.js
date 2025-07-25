@@ -20,13 +20,25 @@ app.get('/', (req, res) => {
 app.post('/print', (req, res) => {
   const message = req.body.message || '';
   if (!message.trim()) {
-    return res.redirect('/');
+    return res.status(400).send('No message provided');
   }
-  // Call the Node.js print CLI (which calls the Go worker)
+  console.log('Received print request:', message);
+
   const printProcess = spawn('node', ['print.js', PRINTER_MAC, message]);
+
+  printProcess.stdout.on('data', (data) => {
+    console.log(`[print.js stdout]: ${data}`);
+  });
+  printProcess.stderr.on('data', (data) => {
+    console.error(`[print.js stderr]: ${data}`);
+  });
+
   printProcess.on('close', (code) => {
-    // After printing, refresh the page
-    res.redirect('/');
+    if (code === 0) {
+      res.status(200).send('Printed!');
+    } else {
+      res.status(500).send('Print failed');
+    }
   });
 });
 
