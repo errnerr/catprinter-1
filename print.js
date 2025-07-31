@@ -199,25 +199,44 @@ async function main() {
   await savePromise;
   const imagePath = 'debug-receipt.png';
   console.log('Calling Go print worker...');
-  const go = spawn('./catprinter', [imagePath, macAddr], { 
-    stdio: ['inherit', 'inherit', 'inherit'],
-    cwd: __dirname
-  });
+  console.log("Calling Go print daemon...");
   
-  go.on('error', (err) => {
-    console.error('Failed to start Go worker:', err);
-    process.exit(1);
-  });
+  // Use HTTP request to daemon instead of spawning process
+  const http = require("http");
+  const querystring = require("querystring");
   
-  go.on('close', (code) => {
-    if (code === 0) {
-      console.log('Print job sent successfully!');
-      process.exit(0);
-    } else {
-      console.error('Print worker failed with code', code);
-      process.exit(1);
+  const postData = querystring.stringify({});
+  const options = {
+    hostname: "localhost",
+    port: 8080,
+    path: `/print?image=${encodeURIComponent(imagePath)}`,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Content-Length": Buffer.byteLength(postData)
     }
+  };
+  
+  const req = http.request(options, (res) => {
+    let data = "";
+    res.on("data", (chunk) => {
+      data += chunk;
+    });
+    res.on("end", () => {
+      if (res.statusCode === 200) {
+        console.log("Print successful:", data);
+      } else {
+        console.error(`Print failed with status ${res.statusCode}:`, data);
+      }
+    });
   });
+  
+  req.on("error", (err) => {
+    console.error("Print worker request failed:", err.message);
+  });
+  
+  req.write(postData);
+  req.end();
 }
 
 main(); 

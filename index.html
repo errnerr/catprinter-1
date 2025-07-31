@@ -2,88 +2,282 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Cat Printer - Mobile Message</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="https://unpkg.com/chota@latest">
+  <title>Cat Printer</title>
+  <link rel="icon" href="favicon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <link rel="stylesheet" href="bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </head>
-<body class="dark">
-  <main class="container">
-    <h2 class="text-center">Cat Printer 😸</h2>
-    <form id="printForm" method="POST" action="/print">
-      <div class="row">
-        <textarea name="message" rows="5" placeholder="Type your message..." required class="col-12"></textarea>
+<body class="d-flex flex-column h-100 bg-light">
+  <div class="container">
+    <h2 class="text-center my-4">
+      <svg width="40px" height="40px" viewBox="0 0 32 32" id="catface_Light" data-name="catface/Light" xmlns="http://www.w3.org/2000/svg">
+        <path id="Path" d="M0,0H4V2H2V6H4v4H2v2H0Z"/>
+        <path id="Path-2" data-name="Path" d="M0,0H22V2H20V4H18V6H4V4H2V2H0Z" transform="translate(4)" fill="#e9ecef"/>
+        <path id="Path-3" data-name="Path" d="M0,0H4V12H2V10H0V6H2V2H0Z" transform="translate(26)" fill="#1a1a1a"/>
+        <path id="Path-4" data-name="Path" d="M30,0h2V32H0V24H2v2H6v2h6v2h6V28h6V26h4V24h2V16H28V12h2Z" fill="#e9ecef"/>
+        <path id="Path-5" data-name="Path" d="M0,0H2V2H4V4H6V6H4V8H6V6h4V8h2v2h2V8h2V6h4V8h2V6H20V4h2V2h2V0h2V4H24V8h2v2H24v2H22V10H16v4H14v2H12V14H10V10H4v2H2V10H0V8H2V4H0Z" transform="translate(2 2)" fill="#e9ecef"/>
+        <path id="Path-6" data-name="Path" d="M0,0H2V2H0Z" transform="translate(4 2)" fill="#1a1a1a"/>
+        <path id="Path-7" data-name="Path" d="M0,0H2V2H0Z" transform="translate(24 2)" fill="#1a1a1a"/>
+        <path id="Path-8" data-name="Path" d="M0,0H2V2H0Z" transform="translate(6 4)" fill="#1a1a1a"/>
+        <path id="Path-9" data-name="Path" d="M0,0H2V2H0Z" transform="translate(22 4)" fill="#1a1a1a"/>
+        <path id="Path-10" data-name="Path" d="M0,0H14V2H10V4H8V2H6V4H4V2H0Z" transform="translate(8 6)" fill="#1a1a1a"/>
+        <path id="Path-11" data-name="Path" d="M0,0H2V2H0Z" transform="translate(6 8)" fill="#1a1a1a"/>
+        <path id="Path-12" data-name="Path" d="M0,0H2V2H0Z" transform="translate(14 8)" fill="#e9ecef"/>
+        <path id="Path-13" data-name="Path" d="M0,0H2V2H0Z" transform="translate(22 8)" fill="#1a1a1a"/>
+        <path id="Path-14" data-name="Path" d="M0,0H2V2H0Z" transform="translate(14 10)" fill="#1a1a1a"/>
+        <path id="Path-15" data-name="Path" d="M0,0H2V4H0Z" transform="translate(0 12)" fill="#e9ecef"/>
+        <path id="Path-16" data-name="Path" d="M0,0H2V2H4V4H0Z" transform="translate(2 12)" fill="#1a1a1a"/>
+        <path id="Path-17" data-name="Path" d="M0,0H6V4H2V2H0Z" transform="translate(6 12)" fill="#1a1a1a"/>
+        <path id="Path-18" data-name="Path" d="M0,0H6V2H4V4H0Z" transform="translate(18 12)" fill="#1a1a1a"/>
+        <path id="Path-19" data-name="Path" d="M2,0H4V4H0V2H2Z" transform="translate(24 12)" fill="#1a1a1a"/>
+        <path id="Path-20" data-name="Path" d="M4,0H6V2h4V4h2V6H8V8h2v2h2v2h2V10h2V8h2V6H14V4h2V2h4V0h2V2h4V4H20V6h6v4H24V8H20v2h2v2H16v2H10V12H4V10H6V8H2v2H0V6H6V4H0V2H4Z" transform="translate(2 14)" fill="#ffffff"/>
+        <path id="Path-21" data-name="Path" d="M0,0H2V2H8V4H2V8H0Z" transform="translate(0 16)" fill="#1a1a1a"/>
+        <path id="Path-22" data-name="Path" d="M0,0H2V2H0Z" transform="translate(12 16)" fill="#1a1a1a"/>
+        <path id="Path-23" data-name="Path" d="M0,0H2V2H0Z" transform="translate(16 16)" fill="#1a1a1a"/>
+        <path id="Path-24" data-name="Path" d="M6,0H8V8H6V4H0V2H6Z" transform="translate(22 16)" fill="#1a1a1a"/>
+        <path id="Path-25" data-name="Path" d="M4,0H6V2h4V4H8V6H6V4H4V6H2V4H0V2H4Z" transform="translate(10 18)" fill="#1a1a1a"/>
+        <path id="Path-26" data-name="Path" d="M2,0H6V2H4V4H0V2H2Z" transform="translate(2 22)" fill="#1a1a1a"/>
+        <path id="Path-27" data-name="Path" d="M0,0H2V2H0Z" transform="translate(14 22)" fill="#e9ecef"/>
+        <path id="Path-28" data-name="Path" d="M0,0H4V2H6V4H2V2H0Z" transform="translate(22 22)" fill="#1a1a1a"/>
+        <path id="Path-29" data-name="Path" d="M0,0H2V2H0Z" transform="translate(14 24)" fill="#1a1a1a"/>
+        <path id="Path-30" data-name="Path" d="M0,0H6V2H0Z" transform="translate(6 26)" fill="#1a1a1a"/>
+        <path id="Path-31" data-name="Path" d="M0,0H6V2H0Z" transform="translate(18 26)" fill="#1a1a1a"/>
+        <path id="Path-32" data-name="Path" d="M0,0H6V2H0Z" transform="translate(12 28)" fill="#1a1a1a"/>
+      </svg></h2>
+
+    <form id="printForm" method="POST" action="/print" enctype="multipart/form-data">
+      <div class="mb-3" id="textRow" style="display: none;">
+        <label for="message" class="form-label">Message</label>
+        <textarea id="message" name="message" rows="10" placeholder="Type your message..." class="form-control"></textarea>
       </div>
-      <div class="row">
-        <button id="printBtn" class="button dark col-12" type="submit">Print</button>
+      <div class="row g-2 mb-3" id="imageRow" style="display: none;">
+        <div class="d-grid">
+          <label for="imageFile" class="btn btn-secondary btn-lg">
+            🤳 Upload Image
+            <input type="file" id="imageFile" name="image" accept="image/*" style="display: none;">
+          </label>
+        </div>
       </div>
-      <div id="status" class="text-center"></div>
+      <div class="mb-3 text-center">
+        <img id="preview" style="display: none; width: 100%; max-width: 384px; margin: 10px auto;">
+      </div>
+      <div class="d-grid mb-3">
+        <button id="printBtn" class="btn btn-lg" type="submit" style="display: none;">Print 
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-printer" viewBox="0 0 16 16">
+            <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1"/>
+            <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1"/>
+          </svg>
+        </button>
+      </div>
     </form>
-  </main>
+    <div class="btn-group btn-group-lg w-100 position-absolute bottom-0 end-0 my-3 px-3" role="group" aria-label="Print Type" id="printType">
+      <button type="button" class="btn btn-primary" id="imageBtn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-images" viewBox="0 0 16 16">
+          <path d="M4.502 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3"/>
+          <path d="M14.002 13a2 2 0 0 1-2 2h-10a2 2 0 0 1-2-2V5A2 2 0 0 1 2 3a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-1.998 2M14 2H4a1 1 0 0 0-1 1h9.002a2 2 0 0 1 2 2v7A1 1 0 0 0 15 11V3a1 1 0 0 0-1-1M2.002 4a1 1 0 0 0-1 1v8l2.646-2.354a.5.5 0 0 1 .63-.062l2.66 1.773 3.71-3.71a.5.5 0 0 1 .577-.094l1.777 1.947V5a1 1 0 0 0-1-1z"/>
+        </svg>
+        Image</button>
+      <button type="button" class="btn btn-warning" id="textBtn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-text-left" viewBox="0 0 16 16">
+          <path fill-rule="evenodd" d="M2 12.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/>
+        </svg>
+        Text
+      </button>
+    </div>
+  </div>
+  
+  <!-- Toast container for status updates -->
+  <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <!-- Toasts will be dynamically added here -->
+  </div>
   <script>
     const form = document.getElementById('printForm');
     const btn = document.getElementById('printBtn');
-    const statusDiv = document.getElementById('status');
+    const imageFile = document.getElementById('imageFile');
+    const preview = document.getElementById('preview');
+    const imageBtn = document.getElementById('imageBtn');
+    const textBtn = document.getElementById('textBtn');
+    const imageRow = document.getElementById('imageRow');
+    
+    let stream = null;
+    let hasImage = false;
+
+    imageBtn.addEventListener('click', () => {
+      imageRow.style.display = 'block';
+      textRow.style.display = 'none';
+      printBtn.style.display = 'block';
+      printBtn.classList.add('btn-primary');
+      printBtn.classList.remove('btn-warning');
+    });
+    textBtn.addEventListener('click', () => {
+      imageRow.style.display = 'none';
+      textRow.style.display = 'block';
+      printBtn.style.display = 'block';
+      printBtn.classList.add('btn-warning');
+      printBtn.classList.remove('btn-primary');
+    });
+
+    // Function to create and show a toast
+    function showToast(message, type = 'info') {
+      const toastContainer = document.querySelector('.toast-container');
+      const toastId = 'toast-' + Date.now();
+      
+      let bgClass = 'bg-info';
+      let icon = 'ℹ️';
+      
+      if (type === 'success') {
+        bgClass = 'bg-success';
+        icon = '✅';
+      } else if (type === 'error') {
+        bgClass = 'bg-danger';
+        icon = '❌';
+      } else if (type === 'warning') {
+        bgClass = 'bg-warning';
+        icon = '⚠️';
+      }
+      
+      const toastHtml = `
+        <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+          <div class="d-flex">
+            <div class="toast-body">
+              ${icon} ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+        </div>
+      `;
+      
+      toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+      
+      const toastElement = document.getElementById(toastId);
+      const toast = new bootstrap.Toast(toastElement, {
+        autohide: true,
+        delay: 5000
+      });
+      
+      toast.show();
+      
+      // Remove the toast element after it's hidden
+      toastElement.addEventListener('hidden.bs.toast', () => {
+        toastElement.remove();
+      });
+    }
+
+    // Handle file upload
+    imageFile.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          preview.src = e.target.result;
+          preview.style.display = 'block';
+          camera.style.display = 'none';
+          hasImage = true;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
 
     form.addEventListener('submit', async function(e) {
       e.preventDefault();
+      
+      // Check if we have content to print
+      const message = form.querySelector('[name="message"]').value;
+      const image = imageFile.files[0];
+      
+      if (!message.trim() && !image && !hasImage) {
+        showToast('Please enter a message or select an image', 'warning');
+        return;
+      }
+      
       btn.disabled = true;
       btn.textContent = 'Printing...';
-      statusDiv.textContent = '';
-      const formData = new FormData(form);
-      const message = formData.get('message');
       
-      const maxRetries = 3;
-      let attempt = 0;
-      let timeout;
+      // Prepare request data
+      const requestData = {
+        message: message
+      };
       
-      async function attemptPrint() {
-        attempt++;
-        statusDiv.textContent = `Attempt ${attempt}/${maxRetries}...`;
-        
-        try {
-          timeout = setTimeout(() => {
-            statusDiv.textContent = `Attempt ${attempt} timed out.`;
-            if (attempt < maxRetries) {
-              setTimeout(attemptPrint, 1000); // Wait 1 second before retry
-            } else {
-              statusDiv.textContent = 'Print failed after all attempts. Please try again.';
-              btn.disabled = false;
-              btn.textContent = 'Print';
-            }
-          }, 30000); // 30 seconds timeout
-
-          const response = await fetch('/print', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ message })
-          });
-          
-          clearTimeout(timeout);
-          
-          if (response.ok) {
-            statusDiv.textContent = 'Printed!';
-            form.reset();
-            btn.disabled = false;
-            btn.textContent = 'Print';
-          } else {
-            throw new Error(`HTTP ${response.status}`);
-          }
-        } catch (err) {
-          clearTimeout(timeout);
-          console.error(`Attempt ${attempt} failed:`, err);
-          
-          if (attempt < maxRetries) {
-            statusDiv.textContent = `Attempt ${attempt} failed. Retrying...`;
-            setTimeout(attemptPrint, 1000); // Wait 1 second before retry
-          } else {
-            statusDiv.textContent = 'Print failed after all attempts. Please try again.';
-            btn.disabled = false;
-            btn.textContent = 'Print';
-          }
+      // If we have an image, convert to base64
+      if (image || hasImage) {
+        const file = image || (hasImage ? imageFile.files[0] : null);
+        if (file) {
+          console.log('Processing image file:', file.name, file.type, file.size);
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            requestData.imageData = e.target.result;
+            console.log('Image converted to base64, length:', e.target.result.length);
+            sendPrintRequest(requestData);
+          };
+          reader.readAsDataURL(file);
+          return; // Don't send request yet, wait for reader
         }
       }
       
-      attemptPrint();
+      // No image, send text only
+      sendPrintRequest(requestData);
+      
+      function sendPrintRequest(requestData) {
+        const maxRetries = 3;
+        let attempt = 0;
+        let timeout;
+        
+        async function attemptPrint() {
+          attempt++;
+          showToast(`Attempt ${attempt}/${maxRetries}...`, 'info');
+          
+          try {
+            timeout = setTimeout(() => {
+              showToast(`Attempt ${attempt} timed out.`, 'warning');
+              if (attempt < maxRetries) {
+                setTimeout(attemptPrint, 1000);
+              } else {
+                showToast('Print failed after all attempts. Please try again.', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Print';
+              }
+            }, 30000);
+
+            const response = await fetch('/print', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(requestData)
+            });
+            
+            clearTimeout(timeout);
+            
+            if (response.ok) {
+              showToast('Printed successfully!', 'success');
+              form.reset();
+              preview.style.display = 'none';
+              camera.style.display = 'none';
+              hasImage = false;
+              btn.disabled = false;
+              btn.textContent = 'Print';
+            } else {
+              throw new Error(`HTTP ${response.status}`);
+            }
+          } catch (err) {
+            clearTimeout(timeout);
+            console.error(`Attempt ${attempt} failed:`, err);
+            
+            if (attempt < maxRetries) {
+              showToast(`Attempt ${attempt} failed. Retrying...`, 'warning');
+              setTimeout(attemptPrint, 1000);
+            } else {
+              showToast('Print failed after all attempts. Please try again.', 'error');
+              btn.disabled = false;
+              btn.textContent = 'Print';
+            }
+          }
+        }
+        
+        attemptPrint();
+      }
     });
   </script>
 </body>

@@ -32,27 +32,71 @@ func main() {
 
     img, err := loadAndBinarizeImage(imgPath)
     if err != nil {
-        log.Fatalf("Failed to load image: %v", err)
+        log.Printf("Failed to load image: %v", err)
+        os.Exit(1)
     }
     buffer := encodeImageToBuffer(img)
 
-    d, err := linux.NewDevice()
-    if err != nil {
-        log.Fatalf("Can't create device : %s", err)
+    // Try to create device with retries
+    var d ble.Device
+    var deviceErr error
+    maxRetries := 3
+    
+    for i := 0; i < maxRetries; i++ {
+        d, deviceErr = linux.NewDevice()
+        if deviceErr == nil {
+            break
+        }
+        log.Printf("Attempt %d: Can't create device: %s", i+1, deviceErr)
+        if i < maxRetries-1 {
+            time.Sleep(2 * time.Second)
+        }
+    }
+    
+    if deviceErr != nil {
+        log.Printf("Failed to create device after %d attempts: %s", maxRetries, deviceErr)
+        os.Exit(1)
     }
     ble.SetDefaultDevice(d)
+    defer func() {
+        if d != nil {
+            fmt.Println("Stopping Bluetooth device...")
+            d.Stop()
+            fmt.Println("Bluetooth device stopped.")
+        }
+    }()
 
+    // Try to connect with retries
+    var client ble.Client
+    var connectErr error
     ctx := ble.WithSigHandler(context.WithTimeout(context.Background(), 60*time.Second))
-    client, err := ble.Dial(ctx, ble.NewAddr(macAddr))
-    if err != nil {
-        log.Fatalf("Failed to connect: %v", err)
+    
+    for i := 0; i < maxRetries; i++ {
+        client, connectErr = ble.Dial(ctx, ble.NewAddr(macAddr))
+        if connectErr == nil {
+            break
+        }
+        log.Printf("Attempt %d: Failed to connect: %v", i+1, connectErr)
+        if i < maxRetries-1 {
+            time.Sleep(2 * time.Second)
+        }
     }
-    defer client.CancelConnection()
+    
+    if connectErr != nil {
+        log.Printf("Failed to connect after %d attempts: %v", maxRetries, connectErr)
+        os.Exit(1)
+    }
+    defer func() {
+        fmt.Println("Cancelling BLE connection...")
+        client.CancelConnection()
+        fmt.Println("BLE connection cancelled.")
+    }()
 
     // Find characteristics
     prof, err := client.DiscoverProfile(true)
     if err != nil {
-        log.Fatalf("Failed to discover profile: %v", err)
+        log.Printf("Failed to discover profile: %v", err)
+        os.Exit(1)
     }
     var controlChar, dataChar *ble.Characteristic
     for _, s := range prof.Services {
@@ -67,14 +111,16 @@ func main() {
         }
     }
     if controlChar == nil || dataChar == nil {
-        log.Fatalf("Could not find required characteristics")
+        log.Printf("Could not find required characteristics")
+        os.Exit(1)
     }
 
     // Set intensity
     fmt.Println("Writing set intensity...")
     err = client.WriteCharacteristic(controlChar, createCommand(0xA2, []byte{0xA0}), true)
     if err != nil {
-        log.Fatalf("Failed to write set intensity: %v", err)
+        log.Printf("Failed to write set intensity: %v", err)
+        os.Exit(1)
     }
     fmt.Println("Set intensity written.")
     time.Sleep(1 * time.Second)
@@ -88,7 +134,8 @@ func main() {
         0x30, 0x00,
     }), true)
     if err != nil {
-        log.Fatalf("Failed to write print request: %v", err)
+        log.Printf("Failed to write print request: %v", err)
+        os.Exit(1)
     }
     fmt.Println("Print request written.")
     time.Sleep(1 * time.Second)
@@ -106,7 +153,8 @@ func main() {
             fmt.Printf("Writing sub-chunk (len=%d)\n", len(chunk))
             err = client.WriteCharacteristic(dataChar, chunk, true)
             if err != nil {
-                log.Fatalf("Failed to write image data sub-chunk: %v", err)
+                log.Printf("Failed to write image data sub-chunk: %v", err)
+                os.Exit(1)
             }
             time.Sleep(5 * time.Millisecond)
         }
@@ -117,10 +165,15 @@ func main() {
     fmt.Println("Writing flush command...")
     err = client.WriteCharacteristic(controlChar, createCommand(0xAD, []byte{0x00}), true)
     if err != nil {
-        log.Fatalf("Failed to write flush: %v", err)
+        log.Printf("Failed to write flush: %v", err)
+        os.Exit(1)
     }
     fmt.Println("Flush written after image data.")
     fmt.Println("Print job sent!")
+    
+    // Ensure proper cleanup
+    time.Sleep(2 * time.Second) // Give printer time to process
+    fmt.Println("Print job completed successfully!")
 }
 
 func loadAndBinarizeImage(path string) (image.Image, error) {
