@@ -59,9 +59,6 @@
           </label>
         </div>
       </div>
-      <div class="mb-3 text-center">
-        <img id="preview" style="display: none; width: 100%; max-width: 384px; margin: 10px auto;">
-      </div>
       <div class="d-grid mb-3">
         <button id="printBtn" class="btn btn-lg" type="submit" style="display: none;">Print 
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-printer" viewBox="0 0 16 16">
@@ -69,6 +66,9 @@
             <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1"/>
           </svg>
         </button>
+      </div>
+      <div class="mb-3 text-center">
+        <img id="preview" style="display: none; width: 100%; max-width: 384px; margin: 10px auto;">
       </div>
     </form>
     <div class="btn-group btn-group-lg w-100 position-absolute bottom-0 end-0 my-3 px-3" role="group" aria-label="Print Type" id="printType">
@@ -102,6 +102,8 @@
     
     let stream = null;
     let hasImage = false;
+    let jobInProgress = false;
+    let currentController = null;
 
     imageBtn.addEventListener('click', () => {
       imageRow.style.display = 'block';
@@ -172,7 +174,7 @@
         reader.onload = function(e) {
           preview.src = e.target.result;
           preview.style.display = 'block';
-          camera.style.display = 'none';
+          if (typeof camera !== 'undefined' && camera) { camera.style.display = 'none'; }
           hasImage = true;
         };
         reader.readAsDataURL(file);
@@ -191,6 +193,12 @@
         showToast('Please enter a message or select an image', 'warning');
         return;
       }
+
+      if (jobInProgress) {
+        showToast('A print job is already in progress. Please wait...', 'warning');
+        return;
+      }
+      jobInProgress = true;
       
       btn.disabled = true;
       btn.textContent = 'Printing...';
@@ -199,6 +207,10 @@
       const requestData = {
         message: message
       };
+
+      // Generate stable jobId for retries
+      const jobId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      requestData.jobId = jobId;
       
       // If we have an image, convert to base64
       if (image || hasImage) {
@@ -222,39 +234,52 @@
       function sendPrintRequest(requestData) {
         const maxRetries = 3;
         let attempt = 0;
-        let timeout;
+        let timeoutHandle;
+        let jobDone = false;
         
         async function attemptPrint() {
+          if (jobDone) return;
           attempt++;
           showToast(`Attempt ${attempt}/${maxRetries}...`, 'info');
+          // Create a new controller per attempt to allow abort on timeout
+          currentController = new AbortController();
+          const localController = currentController;
           
           try {
-            timeout = setTimeout(() => {
+            // Allow long-running print (up to 120s) before retrying
+            timeoutHandle = setTimeout(() => {
+              if (jobDone) return;
               showToast(`Attempt ${attempt} timed out.`, 'warning');
-              if (attempt < maxRetries) {
+              try { localController.abort(); } catch (_) {}
+              if (!jobDone && attempt < maxRetries) {
                 setTimeout(attemptPrint, 1000);
-              } else {
-                showToast('Print failed after all attempts. Please try again.', 'error');
+              } else if (!jobDone) {
+                jobDone = true;
+                jobInProgress = false;
                 btn.disabled = false;
                 btn.textContent = 'Print';
+                showToast('Print failed after all attempts. Please try again.', 'error');
               }
-            }, 30000);
+            }, 120000);
 
             const response = await fetch('/print', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
               },
-              body: JSON.stringify(requestData)
+              body: JSON.stringify(requestData),
+              signal: localController.signal
             });
             
-            clearTimeout(timeout);
+            clearTimeout(timeoutHandle);
             
             if (response.ok) {
+              jobDone = true;
+              jobInProgress = false;
               showToast('Printed successfully!', 'success');
               form.reset();
               preview.style.display = 'none';
-              camera.style.display = 'none';
+              if (typeof camera !== 'undefined' && camera) { camera.style.display = 'none'; }
               hasImage = false;
               btn.disabled = false;
               btn.textContent = 'Print';
@@ -262,13 +287,15 @@
               throw new Error(`HTTP ${response.status}`);
             }
           } catch (err) {
-            clearTimeout(timeout);
+            clearTimeout(timeoutHandle);
             console.error(`Attempt ${attempt} failed:`, err);
             
-            if (attempt < maxRetries) {
+            if (!jobDone && attempt < maxRetries) {
               showToast(`Attempt ${attempt} failed. Retrying...`, 'warning');
               setTimeout(attemptPrint, 1000);
-            } else {
+            } else if (!jobDone) {
+              jobDone = true;
+              jobInProgress = false;
               showToast('Print failed after all attempts. Please try again.', 'error');
               btn.disabled = false;
               btn.textContent = 'Print';

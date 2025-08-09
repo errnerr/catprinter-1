@@ -145,6 +145,9 @@ func (pd *PrinterDaemon) Disconnect() {
         pd.client.CancelConnection()
         pd.client = nil
     }
+    // Clear characteristics to ensure fresh discovery on next connect
+    pd.controlChar = nil
+    pd.dataChar = nil
     pd.connected = false
     log.Printf("Disconnected from printer")
 }
@@ -162,6 +165,8 @@ func (pd *PrinterDaemon) PrintImage(imagePath string) error {
     if err := pd.ensureConnected(); err != nil {
         return fmt.Errorf("failed to connect: %v", err)
     }
+    // Ensure we always disconnect at the end of a job, even on errors
+    defer pd.Disconnect()
 
     // Load and process image
     img, err := loadAndBinarizeImage(imagePath)
@@ -213,6 +218,8 @@ func (pd *PrinterDaemon) PrintImage(imagePath string) error {
     }
 
     log.Printf("Print job completed successfully")
+    // Give printer a brief moment to finish processing before disconnecting
+    time.Sleep(2 * time.Second)
     return nil
 }
 

@@ -74,13 +74,25 @@ async function applyDithering(imageBuffer) {
 // Simple print queue to prevent conflicts
 let isPrinting = false;
 let printQueue = [];
+// Track completed/seen jobIds to avoid duplicates across retries
+const recentJobs = new Map(); // jobId -> timestamp
+const JOB_TTL_MS = 10 * 60 * 1000; // 10 minutes
+// Track in-progress jobs to avoid concurrent duplicates
+const inProgressJobs = new Set();
+
+function cleanupOldJobs() {
+  const now = Date.now();
+  for (const [jobId, ts] of recentJobs.entries()) {
+    if (now - ts > JOB_TTL_MS) recentJobs.delete(jobId);
+  }
+}
 
 // Function to process print queue
 async function processPrintQueue() {
   if (isPrinting || printQueue.length === 0) return;
   
   isPrinting = true;
-  const { imagePath, macAddr, res } = printQueue.shift();
+  const { imagePath, macAddr, res, jobId } = printQueue.shift();
   
   try {
     console.log('Starting print job...');
@@ -96,6 +108,10 @@ async function processPrintQueue() {
     printProcess.on('close', (code) => {
       if (code === 0) {
         console.log('Print job completed successfully');
+        if (jobId) {
+          recentJobs.set(jobId, Date.now());
+          cleanupOldJobs();
+        }
         res.status(200).send('Printed!');
       } else {
         console.error(`catprinter failed with code ${code}`);
@@ -171,12 +187,24 @@ app.get('/', (req, res) => {
 app.post('/print', async (req, res) => {
   const message = req.body.message || '';
   const imageData = req.body.imageData; // Base64 image data
+  const jobId = req.body.jobId;
   
   if (!message.trim() && !imageData) {
     return res.status(400).send('No message or image provided');
   }
   
   console.log('Received print request:', { message: message.trim(), hasImage: !!imageData });
+
+  if (jobId) {
+    if (recentJobs.has(jobId)) {
+      console.log('Duplicate job detected (already completed), acknowledging without reprinting:', jobId);
+      return res.status(200).send('Printed!');
+    }
+    if (inProgressJobs.has(jobId)) {
+      console.log('Duplicate job detected (in progress), returning 202:', jobId);
+      return res.status(202).send('Already printing');
+    }
+  }
 
   if (imageData && !message.trim()) {
     // Image only - save base64 to file and print
@@ -251,6 +279,9 @@ app.post('/print', async (req, res) => {
       console.log('Expected PNG header: 89504e470d0a1a0a');
       console.log('Is valid PNG:', header === '89504e470d0a1a0a');
       
+      // Mark job as in progress
+      if (jobId) inProgressJobs.add(jobId);
+
       // Send print request to daemon
       const daemonUrl = `http://localhost:8080/print?image=debug-receipt.png`;
       
@@ -263,6 +294,10 @@ app.post('/print', async (req, res) => {
       .then(response => {
         if (response.ok) {
           console.log('Print job completed successfully');
+          if (jobId) {
+            recentJobs.set(jobId, Date.now());
+            cleanupOldJobs();
+          }
           res.status(200).send('Printed!');
         } else {
           console.error('Daemon print failed:', response.status);
@@ -272,6 +307,9 @@ app.post('/print', async (req, res) => {
       .catch(error => {
         console.error('Daemon request failed:', error);
         res.status(500).send('Print failed');
+      })
+      .finally(() => {
+        if (jobId) inProgressJobs.delete(jobId);
       });
     } catch (error) {
       console.error('Error processing image:', error);
@@ -279,6 +317,7 @@ app.post('/print', async (req, res) => {
     }
   } else {
     // Text only or text + image - use the existing print.js workflow
+    if (jobId) inProgressJobs.add(jobId);
     const printProcess = spawn('node', ['print.js', PRINTER_MAC, message]);
 
     printProcess.stdout.on('data', (data) => {
@@ -290,10 +329,15 @@ app.post('/print', async (req, res) => {
 
     printProcess.on('close', (code) => {
       if (code === 0) {
+        if (jobId) {
+          recentJobs.set(jobId, Date.now());
+          cleanupOldJobs();
+        }
         res.status(200).send('Printed!');
       } else {
         res.status(500).send('Print failed');
       }
+      if (jobId) inProgressJobs.delete(jobId);
     });
   }
 });
